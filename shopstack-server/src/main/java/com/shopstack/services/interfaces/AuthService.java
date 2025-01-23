@@ -1,0 +1,64 @@
+package com.shopstack.services.interfaces;
+/*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ + MIT License
+ +
+ + Copyright (c) 2023 Artiom Bozieac
+ +
+ + Permission is hereby granted, free of charge, to any person obtaining a copy
+ + of this software and associated documentation files (the "Software"), to deal
+ + in the Software without restriction, including without limitation the rights
+ + to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ + copies of the Software, and to permit persons to whom the Software is
+ + furnished to do so, subject to the following conditions:
+ +
+ + The above copyright notice and this permission notice shall be included in all
+ + copies or substantial portions of the Software.
+ +
+ + THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ + IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ + FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ + AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ + LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ + OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ + SOFTWARE.
+ +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
+
+import com.shopstack.model.dto.auth.AuthResponseDTO;
+import com.shopstack.model.dto.auth.LoginDTO;
+import com.shopstack.model.dto.auth.RegisterDTO;
+
+/**
+ * Interface for authentication/authorization service.
+ */
+public interface AuthService {
+
+    /**
+     * Registers the user.
+     *
+     * @param registerDTO is the register DTO.
+     */
+    void register(final RegisterDTO registerDTO);
+
+    /**
+     * Logins the user.
+     *
+     * @param loginDTO is the login DTO.
+     * @return AuthResponseDTO with access and refresh tokens.
+     */
+    AuthResponseDTO login(final LoginDTO loginDTO);
+
+    /**
+     * Refreshes the access token using a refresh token.
+     *
+     * @param refreshToken the refresh token.
+     * @return new access token.
+     */
+    String refreshAccessToken(final String refreshToken);
+
+    /**
+     * Logs out the user by revoking their refresh tokens.
+     *
+     * @param username the username.
+     */
+    void logout(final String username);
+}
