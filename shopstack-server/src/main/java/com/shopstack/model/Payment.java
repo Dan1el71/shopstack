@@ -1,0 +1,51 @@
+package com.shopstack.model;
+
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.shopstack.model.base.BaseEntity;
+import com.shopstack.utils.PaymentStatus;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.math.BigDecimal;
+
+/**
+ * JPA Entity for payment.
+ */
+@AllArgsConstructor
+@NoArgsConstructor
+@Getter
+@Setter
+@Entity(name = "payments")
+@Table(name = "payments")
+public class Payment extends BaseEntity {
+
+    /**
+     * Client-provided key used to deduplicate payment requests.
+     */
+    @Column(name = "idempotency_key", unique = true, length = 255)
+    private String idempotencyKey;
+
+    /**
+     * Payment's order ID.
+     */
+    @JsonBackReference
+    @ManyToOne
+    @JoinColumn(name = "order_id")
+    private Order order;
+
+    /**
+     * Payment's amount.
+     */
+    @Column(nullable = false, precision = 19, scale = 2)
+    private BigDecimal amount;
+
+    /**
+     * Payment's status.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private PaymentStatus status;
+}
