@@ -1,0 +1,226 @@
+/*
+ * MIT License
+ *
+ * Copyright (c) 2023 Artiom Bozieac
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+import React from 'react';
+import Typography from '@mui/material/Typography';
+import Product from './Product';
+import { useAppSelector } from '../../../hooks';
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
+import { Category } from './AddProductPage';
+import { Box } from '@mui/material';
+import IconButton from '@mui/material/IconButton';
+import DeleteIcon from '@mui/icons-material/Delete';
+import { deleteProduct, getProductPhoto } from '../../../api/ProductRequest';
+import { getTranslation } from '../../../../i18n/i18n';
+import NoPhoto from "../../../../img/no-photo.jpg";
+import { useNavigate } from 'react-router-dom';
+import ConfirmationDialog from '../../common/ConfirmationDialog';
+
+const MyProductCard = ({ id, name, price, categories, description }: Product) => {
+    const [isDeleted, setIsDeleted] = React.useState<boolean>(false);
+    const [deleteDialogOpen, setDeleteDialogOpen] = React.useState<boolean>(false);
+    const [isDeleting, setIsDeleting] = React.useState<boolean>(false);
+    const [photo, setPhoto] = React.useState(NoPhoto);
+    const navigate = useNavigate();
+    const lang = useAppSelector(state => state.lang.lang);
+
+    const handleAlertClick = () => {
+        setIsDeleted(false);
+    };
+
+    const handleDeleteClick = (event: any) => {
+        event.stopPropagation();
+        setDeleteDialogOpen(true);
+    };
+
+    const handleDeleteConfirm = async () => {
+        setIsDeleting(true);
+        setIsDeleted(false);
+
+        const response = await deleteProduct(id);
+
+        if (response.status) {
+            if (response.status == 401) {
+                navigate("/login");
+            }
+        }
+
+        if (response.status == 200) {
+            setIsDeleted(true);
+        }
+
+        setIsDeleting(false);
+        setDeleteDialogOpen(false);
+        location.reload();
+    }
+
+    React.useEffect(() => {
+        const getProductPhotoRequest = async () => {
+            const photoBlob = await getProductPhoto(id);
+
+            if (photoBlob.size > 0) {
+                setPhoto(URL.createObjectURL(photoBlob));
+            }
+        }
+
+        getProductPhotoRequest();
+    }, []);
+
+    const handleEditProduct = () => {
+        navigate("/product/edit", {
+            state: {
+                id: id,
+                title: name,
+                categories: categories,
+                price: price,
+                description: description
+            }
+        })
+    }
+
+    return (<>
+        {isDeleted && (
+            <Snackbar 
+                open={isDeleted} 
+                autoHideDuration={2000} 
+                onClose={handleAlertClick}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            >
+                <Alert onClose={handleAlertClick} id="alert-success" severity="success" sx={{ width: '100%' }}>
+                    {getTranslation(lang, "cartitem_deleted_successfully")}
+                </Alert>
+            </Snackbar>
+        )}
+        <Box
+            onClick={handleEditProduct}
+            sx={{
+                bgcolor: 'background.paper',
+                borderRadius: 2,
+                p: 2,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease-in-out',
+                '&:hover': {
+                    transform: 'translateY(-2px)',
+                    boxShadow: 3,
+                },
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2
+            }}
+        >
+            <Box
+                sx={{
+                    width: 80,
+                    height: 80,
+                    borderRadius: 2,
+                    overflow: 'hidden',
+                    flexShrink: 0
+                }}
+            >
+                <img 
+                    style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover'
+                    }}
+                    src={photo} 
+                    alt="product-image" 
+                    data-testid={"card-image-" + id}
+                />
+            </Box>
+            
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography 
+                    variant="h6" 
+                    sx={{ 
+                        fontWeight: 500,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap"
+                    }}
+                >
+                    {name}
+                </Typography>
+                <Typography 
+                    variant="body2" 
+                    color="text.secondary"
+                    sx={{
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap"
+                    }}
+                >
+                    {categories?.map(cat => cat.name).join(", ")}
+                </Typography>
+            </Box>
+            
+            <Typography 
+                variant="h6" 
+                sx={{ 
+                    fontWeight: 600,
+                    color: 'primary.main',
+                    minWidth: 80,
+                    textAlign: 'right'
+                }}
+            >
+                {price + "€"}
+            </Typography>
+            
+            <IconButton 
+                color="error" 
+                data-testid="delete-icon" 
+                aria-label="delete" 
+                onClick={(e) => handleDeleteClick(e)}
+                sx={{
+                    border: "1px solid",
+                    transition: 'all 0.2s',
+                    '&:hover': {
+                        bgcolor: 'error.main',
+                        color: 'white',
+                        borderColor: 'error.main'
+                    }
+                }}
+            >
+                <DeleteIcon />
+            </IconButton>
+        </Box>
+
+        {/* Delete Confirmation Dialog */}
+        <ConfirmationDialog
+            open={deleteDialogOpen}
+            title={getTranslation(lang, 'confirm_delete') || 'Confirm Delete'}
+            message={getTranslation(lang, 'confirm_delete_product') || 'Are you sure you want to delete this product? This action cannot be undone.'}
+            confirmText={getTranslation(lang, 'delete') || 'Delete'}
+            cancelText={getTranslation(lang, 'cancel') || 'Cancel'}
+            onConfirm={handleDeleteConfirm}
+            onCancel={() => setDeleteDialogOpen(false)}
+            loading={isDeleting}
+            confirmColor="error"
+        />
+    </>
+    );
+}
+
+export default MyProductCard;
