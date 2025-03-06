@@ -1,0 +1,25 @@
+package com.shopstack.service;
+
+import com.shopstack.model.NotificationContent;
+import com.shopstack.utils.ContactType;
+
+/**
+ * Interface for a notification sender.
+ */
+public interface NotificationSender {
+
+    /**
+     * Returns the contact type for notification.
+     *
+     * @return the contact type.
+     */
+    ContactType getContactType();
+
+    /**
+     * Sends the notification.
+     *
+     * @param contact is the contact to send notification to.
+     * @param content is the notification content.
+     */
+    void send(String contact, NotificationContent content);
+}
