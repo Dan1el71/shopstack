@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.shopstack</groupId>
+        <artifactId>shopstack</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>shopstack-it</artifactId>
+    <name>shopstack-it</name>
+    <description>Black-box integration tests for shopstack-server using Testcontainers and RestAssured.</description>
+
+    <properties>
+        <maven.compiler.release>17</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <testcontainers.version>1.20.4</testcontainers.version>
+        <rest-assured.version>5.4.0</rest-assured.version>
+        <surefire.version>3.2.5</surefire.version>
+        <!--
+            The root reactor runs this module too. The backend job sets -Dit.skip=true so the
+            container-backed suite only runs in the dedicated integration job (or locally).
+        -->
+        <it.skip>false</it.skip>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Align every Spring Boot / Jackson / Kafka version with the server module. -->
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>3.5.12</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-bom</artifactId>
+                <version>${testcontainers.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <!--
+            The application under test. The dependency is test-scoped: its compile/runtime
+            dependencies become the test classpath, but nothing leaks into other modules.
+        -->
+        <dependency>
+            <groupId>com.shopstack</groupId>
+            <artifactId>shopstack-server</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>rest-assured</artifactId>
+            <version>${rest-assured.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>mysql</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>kafka</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${surefire.version}</version>
+                <configuration>
+                    <skipTests>${it.skip}</skipTests>
+                    <!-- Only the integration suite lives in this module. -->
+                    <includes>
+                        <include>**/*IT.java</include>
+                    </includes>
+                    <argLine>-Xmx640m -XX:MaxMetaspaceSize=256m</argLine>
+                    <systemPropertyVariables>
+                        <!--
+                            Docker Engine 29 refuses API versions below 1.40. docker-java still
+                            defaults to 1.32, so pin a version understood by both modern CI
+                            runners and Docker 29. Testcontainers reads this through
+                            docker-java's DefaultDockerClientConfig.
+                        -->
+                        <api.version>1.41</api.version>
+                    </systemPropertyVariables>
+                    <forkedProcessExitTimeoutInSeconds>90</forkedProcessExitTimeoutInSeconds>
+                    <trimStackTrace>false</trimStackTrace>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
