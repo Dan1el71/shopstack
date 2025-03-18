@@ -1,5 +1,7 @@
 package com.shopstack.services;
 
+import com.shopstack.security.CurrentUser;
+
 /*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  + MIT License
  +
@@ -161,7 +163,7 @@ public class ProductServiceImpl implements ProductService {
     public void addProductToCart(final Long id, final Integer quantity) {
         Product product = this.getProduct(id);
 
-        UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        UserDetails userDetails = CurrentUser.require();
         User user = userService.getByUsername(userDetails.getUsername());
 
         Cart cart = user.getCart();
@@ -185,7 +187,7 @@ public class ProductServiceImpl implements ProductService {
     public Long addProduct(ProductDTO productDTO) {
         Product product = RequestBodyToEntityConverter.convertToProduct(productDTO);
 
-        UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        UserDetails userDetails = CurrentUser.require();
 
         User user = userService.getByUsername(userDetails.getUsername());
         product.setUser(user);

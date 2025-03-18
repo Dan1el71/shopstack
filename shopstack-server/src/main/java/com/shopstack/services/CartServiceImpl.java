@@ -1,5 +1,7 @@
 package com.shopstack.services;
 
+import com.shopstack.security.CurrentUser;
+
 /*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  + MIT License
  +
@@ -32,7 +34,6 @@ import com.shopstack.services.interfaces.CartService;
 import com.shopstack.services.interfaces.UserService;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
@@ -66,7 +67,7 @@ public class CartServiceImpl implements CartService {
     @Override
     @Transactional
     public void clearCart() {
-        UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        UserDetails userDetails = CurrentUser.require();
         User user = userService.getByUsername(userDetails.getUsername());
 
         cartItemRepository.deleteByCartId(user.getCart().getId());
