@@ -1,0 +1,78 @@
+/*
+ * MIT License
+ *
+ * Copyright (c) 2023 Artiom Bozieac
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+import { API_BASE_URL } from "../../env-config";
+import { authenticatedGet, authenticatedDelete, authenticatedPost } from "./AuthInterceptor";
+
+/**
+ * API Request to get user's cart items.
+ * @param username User's username.
+ * @param page Page number.
+ * @param size Page size.
+ * @returns Response.
+ */
+export const getCartItems = async (username: string, page = 0, size = 5) => {
+    const response = await authenticatedGet(
+        `${API_BASE_URL}/api/cartItem?username=${username}&page=${page}&size=${size}`
+    );
+
+    if (!response.ok) {
+        return response;
+    }
+
+    return response.json();
+};
+
+/**
+ * API Request to delete a cart item.
+ * @param id Cart item's ID.
+ * @returns Response.
+ */
+export const deleteCartItem = async (id: number) => {
+    const response = await authenticatedDelete(`${API_BASE_URL}/api/cartItem/${id}`);
+
+    if (!response.ok) {
+        return response;
+    }
+
+    return response.json();
+}
+
+/**
+ * API Request to change quantity of a cart item.
+ * @param id Cart item's ID.
+ * @param quantity Cart item's new quantity.
+ * @returns Response.
+ */
+export const changeQuantity = async (id: number, quantity: number) => {
+    const response = await authenticatedPost(
+        `${API_BASE_URL}/api/cartItem/${id}/quantity?quantity=${quantity}`,
+        null
+    );
+
+    if (!response.ok) {
+        return response;
+    }
+
+    return response.json();
+}

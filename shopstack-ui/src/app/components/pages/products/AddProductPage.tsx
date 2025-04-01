@@ -1,0 +1,348 @@
+/*
+ * MIT License
+ *
+ * Copyright (c) 2023 Artiom Bozieac
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+import {
+    Alert,
+    Box,
+    Button,
+    Checkbox,
+    Container,
+    ListItemText,
+    MenuItem,
+    OutlinedInput,
+    Paper,
+    Select,
+    SelectChangeEvent,
+    Snackbar,
+    TextField,
+    Typography
+} from '@mui/material';
+import * as React from 'react';
+import { addProduct, setProductPhoto } from '../../../api/ProductRequest';
+import { InputError, isFieldPresentInInputErrors } from '../../../utils/InputErrorUtils';
+import InputFields from '../../../utils/InputFields';
+import NoPhoto from "../../../../img/no-photo.jpg";
+import AddIcon from '@mui/icons-material/Add';
+
+import Header from '../../Header';
+import Copyright from '../../footer/Copyright';
+
+import { useNavigate } from 'react-router-dom';
+import { getTranslation } from '../../../../i18n/i18n';
+import { getCategories } from '../../../api/CategoryRequest';
+import { useAppSelector } from '../../../hooks';
+
+const MenuProps = {
+    PaperProps: {
+        style: {
+            maxHeight: 48 * 4.5 + 8,
+            width: 350,
+        },
+    },
+};
+
+export interface Category {
+    id: number,
+    name: string
+}
+
+const AddProductPage = () => {
+    const lang = useAppSelector(state => state.lang.lang);
+    const roles = useAppSelector(state => state.info.info.roles);
+
+    const [name, setName] = React.useState("");
+    const [description, setDescription] = React.useState("");
+    const [price, setPrice] = React.useState(0.1);
+    const [categories, setCategories] = React.useState<string[]>([]);
+    const [fetchedCategories, setFetchedCategories] = React.useState<Category[]>([]);
+
+    const [inputErrors, setInputErrors] = React.useState<InputError[]>([]);
+    const [isSuccess, setSuccess] = React.useState(false);
+
+    const [photo, setPhoto] = React.useState(NoPhoto);
+    const [file, setFile] = React.useState<File | null>(null);
+
+    const handleAlertClick = () => {
+        setSuccess(false);
+    };
+
+    React.useEffect(() => {
+        const fetchCategories = async () => {
+            const categoriesRequest = await getCategories();
+
+            setFetchedCategories(categoriesRequest);
+        }
+
+        fetchCategories(); // NOSONAR: It should not await.
+    }, [categories]);
+
+    const handleSubmit = async () => {
+        setSuccess(false);
+        setInputErrors([]);
+
+        let categoriesDTO: Category[] = [];
+        categories.forEach((category) => {
+            fetchedCategories.forEach((fetchedCategory) => {
+                if (fetchedCategory.name.localeCompare(category) == 0) {
+                    const categoryDTO = {
+                        id: fetchedCategory.id,
+                        name: fetchedCategory.name
+                    }
+
+                    categoriesDTO.push(categoryDTO);
+                }
+            }
+            )
+        })
+
+        const response = await addProduct(name, categoriesDTO, price, description);
+        if (response.fieldErrors) {
+            setInputErrors(response.fieldErrors);
+        } else {
+            if (file != null) {
+                await setProductPhoto(response.id, file);
+            }
+
+            setSuccess(true);
+        }
+    }
+
+    const handleCategoriesChange = (event: SelectChangeEvent<typeof categories>) => {
+        const { target: { value }, } = event;
+        setCategories(typeof value === 'string' ? value.split(',') : value);
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) {
+            setFile(e.target.files[0]);
+
+            let reader = new FileReader();
+            reader.readAsDataURL(e.target.files[0] as Blob);
+            reader.onload = function () {
+                setPhoto(reader.result as string);
+            };
+        }
+    };
+
+    return (
+        <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
+            <Header />
+            {isSuccess && (
+                <Snackbar 
+                    open={isSuccess} 
+                    autoHideDuration={2000} 
+                    onClose={handleAlertClick}
+                    anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                >
+                    <Alert data-testid="alert-success" id="alert-success" onClose={handleAlertClick} severity="success" sx={{ width: '100%' }}>
+                        {getTranslation(lang, "product_added_successfully")}
+                    </Alert>
+                </Snackbar>
+            )}
+            <Container maxWidth="lg" sx={{ flex: 1, py: 4 }}>
+                <Box sx={{ mb: 4 }}>
+                    <Typography
+                        variant="h4"
+                        fontWeight={700}
+                        sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 2,
+                            color: 'primary.main'
+                        }}
+                    >
+                        <AddIcon fontSize="large" />
+                        {getTranslation(lang, "add_product")}
+                    </Typography>
+                </Box>
+
+                {// @ts-ignore 
+                    roles[0].name === "SELLER" ? (
+                        <Paper 
+                            elevation={2} 
+                            sx={{ 
+                                borderRadius: 2,
+                                overflow: 'hidden',
+                                bgcolor: 'background.paper',
+                                p: 4,
+                                display: 'flex',
+                                flexDirection: { xs: 'column', md: 'row' },
+                                gap: 4
+                            }}
+                        >
+                            <Box sx={{
+                                width: { xs: '100%', md: '300px' },
+                                alignSelf: 'start'
+                            }}>
+                                <input
+                                    accept="image/*"
+                                    style={{ display: 'none' }}
+                                    id="photo-upload-button"
+                                    type="file"
+                                    onChange={handleFileChange}
+                                />
+                                <label htmlFor="photo-upload-button">
+                                    <Button 
+                                        component="span" 
+                                        sx={{ 
+                                            width: '100%',
+                                            aspectRatio: '1/1',
+                                            p: 0,
+                                            overflow: 'hidden',
+                                            borderRadius: 2,
+                                            boxShadow: 2,
+                                            '&:hover': {
+                                                boxShadow: 4,
+                                                '& img': {
+                                                    transform: 'scale(1.05)'
+                                                }
+                                            }
+                                        }}
+                                    >
+                                        <img 
+                                            width="100%" 
+                                            height="100%" 
+                                            className="user-image" 
+                                            alt="product-image" 
+                                            data-testid="photo"
+                                            src={photo}
+                                            style={{
+                                                objectFit: 'cover',
+                                                transition: 'transform 0.3s ease-in-out'
+                                            }}
+                                        />
+                                    </Button>
+                                </label>
+                            </Box>
+
+                            <Box sx={{ flex: 1 }}>
+                                <Box sx={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: 2
+                                }}>
+                                    <TextField
+                                        error={isFieldPresentInInputErrors(InputFields.NAME, inputErrors)}
+                                        required
+                                        fullWidth
+                                        name="name"
+                                        label={getTranslation(lang, "name")}
+                                        type="name"
+                                        id="name-field"
+                                        data-testid="name-field"
+                                        autoComplete="current-name"
+                                        helperText={inputErrors.find(error => error.field === InputFields.NAME)?.message ? getTranslation(lang, inputErrors.find(error => error.field === InputFields.NAME)?.message || '') : undefined}
+                                        onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
+                                            setName(event.target.value);
+                                        }}
+                                    />
+                                    <TextField
+                                        fullWidth
+                                        multiline
+                                        rows={4}
+                                        error={isFieldPresentInInputErrors(InputFields.DESCRIPTION, inputErrors)}
+                                        name="description"
+                                        label={getTranslation(lang, "description")}
+                                        type="description"
+                                        id="description"
+                                        data-testid="description"
+                                        autoComplete="current-description"
+                                        helperText={inputErrors.find(error => error.field === InputFields.DESCRIPTION)?.message ? getTranslation(lang, inputErrors.find(error => error.field === InputFields.DESCRIPTION)?.message || '') : undefined}
+                                        onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
+                                            setDescription(event.target.value);
+                                        }}
+                                    />
+                                    <Box sx={{ display: 'flex', gap: 2 }}>
+                                        <TextField
+                                            error={isFieldPresentInInputErrors(InputFields.PRICE, inputErrors)}
+                                            value={price}
+                                            onChange={(event) => { setPrice(Number(event.target.value)) }}
+                                            required
+                                            id="price-field"
+                                            data-testid="price-field"
+                                            label={getTranslation(lang, "price") + '€'}
+                                            type="number"
+                                            inputProps={{ min: 0.01 }}
+                                            helperText={inputErrors.find(error => error.field === InputFields.PRICE)?.message ? getTranslation(lang, inputErrors.find(error => error.field === InputFields.PRICE)?.message || '') : undefined}
+                                            sx={{ flex: 1 }}
+                                        />
+                                        <Select
+                                            id="categories-field"
+                                            data-testid="categories-field"
+                                            displayEmpty
+                                            multiple
+                                            label={getTranslation(lang, "categories")}
+                                            value={categories}
+                                            onChange={handleCategoriesChange}
+                                            input={<OutlinedInput />}
+                                            renderValue={(selected) => (
+                                                <em>{getTranslation(lang, "categories")}</em>
+                                            )}
+                                            MenuProps={MenuProps}
+                                            sx={{ flex: 2, height: '100%' }}
+                                        >
+                                            {fetchedCategories.map((fetchedCategory) => (
+                                                <MenuItem key={fetchedCategory.name} value={fetchedCategory.name}>
+                                                    <Checkbox checked={categories.indexOf(fetchedCategory.name) > -1} />
+                                                    <ListItemText primary={getTranslation(lang, fetchedCategory.name)} />
+                                                </MenuItem>
+                                            ))}
+                                        </Select>
+                                    </Box>
+                                </Box>
+                                <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
+                                    <Button
+                                        id="submit-button"
+                                        type="submit"
+                                        data-testid="submit-button"
+                                        variant="contained"
+                                        onClick={handleSubmit}
+                                        sx={{
+                                            px: 4,
+                                            py: 1,
+                                            borderRadius: 2,
+                                        }}
+                                    >
+                                        {getTranslation(lang, "add")}
+                                    </Button>
+                                </Box>
+                            </Box>
+                        </Paper>
+                    ) : (
+                        <Typography 
+                            variant="h6" 
+                            color="text.secondary" 
+                            align='center' 
+                            py={8}
+                        >
+                            {getTranslation(lang, "no_rights_to_access")}
+                        </Typography>
+                    )}
+            </Container>
+            <Copyright />
+        </Box>
+    );
+}
+
+export default AddProductPage;
