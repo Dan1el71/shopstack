@@ -1,0 +1,235 @@
+# Required environment variables (no defaults - the stack refuses to start without them):
+#   JWT_SECRET     - HS256 signing secret for the shopstack-server JWT tokens
+#   STRIPE_API_KEY - Stripe secret key used by payment-service
+#   MAIL_USERNAME  - SMTP account used by notification-service
+#   MAIL_PASSWORD  - SMTP password/app-password used by notification-service
+# Copy .env.example to .env in this directory and fill it in, or export the
+# variables in your shell before running `docker compose up`.
+
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - shopstack-server
+      - payment-service
+      - notification-service
+      - shopstack-ui
+    networks:
+      - shopstack-network
+    restart: unless-stopped
+
+  kafka:
+    image: apache/kafka:4.1.1
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+    networks:
+      - shopstack-network
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: "123"
+    volumes:
+      - ./mysql-init:/docker-entrypoint-initdb.d
+      - mysql-data:/var/lib/mysql
+    networks:
+      - shopstack-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - shopstack-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  shopstack-server:
+    build:
+      context: ../shopstack-server
+      dockerfile: Dockerfile.dev
+    container_name: shopstack-server
+    expose:
+      - "8081"
+    volumes:
+      - ../shopstack-server/src:/app/src
+      - ../shopstack-server/target:/app/target
+      - maven-cache:/root/.m2
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_DEVTOOLS_RESTART_ENABLED=true
+      - SPRING_DEVTOOLS_LIVERELOAD_ENABLED=true
+      # Database
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/shopstack?useSSL=false&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=123
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=validate
+      - SPRING_FLYWAY_ENABLED=true
+      - SPRING_FLYWAY_LOCATIONS=classpath:db/migration
+      # Swagger
+      - SPRINGDOC_SWAGGER_UI_TAGS_SORTER=alpha
+      # JWT
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
+      # Kafka
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - SPRING_KAFKA_CONSUMER_GROUP_ID=main-server
+      - SPRING_KAFKA_CONSUMER_AUTO_OFFSET_RESET=earliest
+      - SPRING_KAFKA_CONSUMER_PROPERTIES_SPRING_JSON_TRUSTED_PACKAGES=com.shopstack.kafka.events
+      # Redis
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+      # CORS
+      - APP_CORS_ALLOWED_ORIGINS=http://localhost:8080,http://host.docker.internal:8080
+    depends_on:
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    networks:
+      - shopstack-network
+
+  payment-service:
+    build:
+      context: ../shopstack-payment-service
+      dockerfile: Dockerfile.dev
+    container_name: payment-service
+    expose:
+      - "8082"
+    volumes:
+      - ../shopstack-payment-service/src:/app/src
+      - ../shopstack-payment-service/target:/app/target
+      - maven-cache:/root/.m2
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_DEVTOOLS_RESTART_ENABLED=true
+      - SPRING_DEVTOOLS_LIVERELOAD_ENABLED=true
+      # Database
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/shopstack_payment_service?useSSL=false&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=123
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=validate
+      - SPRING_FLYWAY_ENABLED=true
+      - SPRING_FLYWAY_LOCATIONS=classpath:db/migration
+      # Swagger
+      - SPRINGDOC_SWAGGER_UI_TAGS_SORTER=alpha
+      # Kafka
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - SPRING_KAFKA_CONSUMER_GROUP_ID=payment-service
+      - SPRING_KAFKA_CONSUMER_AUTO_OFFSET_RESET=earliest
+      - SPRING_KAFKA_CONSUMER_KEY_DESERIALIZER=org.apache.kafka.common.serialization.StringDeserializer
+      - SPRING_KAFKA_CONSUMER_VALUE_DESERIALIZER=org.springframework.kafka.support.serializer.JsonDeserializer
+      - SPRING_KAFKA_CONSUMER_PROPERTIES_SPRING_JSON_TRUSTED_PACKAGES=com.shopstack.kafka.events
+      - SPRING_KAFKA_CONSUMER_PROPERTIES_SPRING_JSON_TYPE_MAPPING=PaymentRequestedEvent:com.shopstack.kafka.events.PaymentRequestedEvent
+      - SPRING_KAFKA_PRODUCER_KEY_SERIALIZER=org.apache.kafka.common.serialization.StringSerializer
+      - SPRING_KAFKA_PRODUCER_VALUE_SERIALIZER=org.springframework.kafka.support.serializer.JsonSerializer
+      # Stripe
+      - STRIPE_API_KEY=${STRIPE_API_KEY:?STRIPE_API_KEY is required}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    networks:
+      - shopstack-network
+
+  notification-service:
+    build:
+      context: ../shopstack-notification-service
+      dockerfile: Dockerfile.dev
+    container_name: notification-service
+    expose:
+      - "8083"
+    volumes:
+      - ../shopstack-notification-service/src:/app/src
+      - ../shopstack-notification-service/target:/app/target
+      - maven-cache:/root/.m2
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_DEVTOOLS_RESTART_ENABLED=true
+      - SPRING_DEVTOOLS_LIVERELOAD_ENABLED=true
+      # Database
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/shopstack_notification_service?useSSL=false&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=123
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=validate
+      - SPRING_FLYWAY_ENABLED=true
+      - SPRING_FLYWAY_LOCATIONS=classpath:db/migration
+      # Swagger
+      - SPRINGDOC_SWAGGER_UI_TAGS_SORTER=alpha
+      # Kafka
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - SPRING_KAFKA_CONSUMER_GROUP_ID=notification-service
+      - SPRING_KAFKA_CONSUMER_AUTO_OFFSET_RESET=earliest
+      - SPRING_KAFKA_CONSUMER_PROPERTIES_SPRING_JSON_TRUSTED_PACKAGES=com.shopstack.kafka.events
+      # Mail
+      - SPRING_MAIL_HOST=smtp.gmail.com
+      - SPRING_MAIL_PORT=587
+      - MAIL_USERNAME=${MAIL_USERNAME:?MAIL_USERNAME is required}
+      - MAIL_PASSWORD=${MAIL_PASSWORD:?MAIL_PASSWORD is required}
+      - SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=true
+      - SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true
+    depends_on:
+      kafka:
+        condition: service_started
+    networks:
+      - shopstack-network
+
+  shopstack-ui:
+    build:
+      context: ../shopstack-ui
+      dockerfile: Dockerfile.dev
+    container_name: shopstack-ui
+    expose:
+      - "8080"
+    volumes:
+      - ../shopstack-ui/src:/app/src
+      - ../shopstack-ui/public:/app/public
+      - ../shopstack-ui/index.html:/app/index.html
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost/api
+      - CHOKIDAR_USEPOLLING=true
+    depends_on:
+      - shopstack-server
+    networks:
+      - shopstack-network
+
+networks:
+  shopstack-network:
+    driver: bridge
+
+volumes:
+  mysql-data:
+  maven-cache:
