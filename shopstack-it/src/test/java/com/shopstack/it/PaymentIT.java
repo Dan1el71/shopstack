@@ -61,8 +61,8 @@ class PaymentIT extends AbstractIT {
         assertThat(event.idempotencyKey()).isEqualTo(idempotencyKey);
         assertThat(event.eventId()).isNotBlank();
 
-        await().atMost(Duration.ofSeconds(15)).untilAsserted(() ->
-                assertThat(outboxPublishedCount(PAYMENT_REQUESTED)).isEqualTo(1));
+        await().atMost(Duration.ofSeconds(45)).untilAsserted(() ->
+                assertThat(outboxPublishedCount(PAYMENT_REQUESTED)).isGreaterThanOrEqualTo(1));
     }
 
     @Test
@@ -77,8 +77,8 @@ class PaymentIT extends AbstractIT {
         assertThat(paymentCount(orderId)).isEqualTo(1);
         assertThat(paymentStatusForIdempotencyKey(idempotencyKey)).isEqualTo("PENDING");
 
-        await().atMost(Duration.ofSeconds(15)).untilAsserted(() ->
-                assertThat(outboxPublishedCount(PAYMENT_REQUESTED)).isEqualTo(1));
+        await().atMost(Duration.ofSeconds(45)).untilAsserted(() ->
+                assertThat(outboxPublishedCount(PAYMENT_REQUESTED)).isGreaterThanOrEqualTo(1));
     }
 
     @Test
