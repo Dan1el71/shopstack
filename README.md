@@ -134,6 +134,22 @@ stack:
 mvn -B -pl shopstack-it -am test
 ```
 
+## Interface
+
+| Storefront | Cart and checkout |
+|---|---|
+| ![Storefront](docs/screenshots/02-storefront.png) | ![Cart](docs/screenshots/03-cart.png) |
+
+| Seller products | Add product |
+|---|---|
+| ![Seller products](docs/screenshots/05-seller-products.png) | ![Add product](docs/screenshots/06-add-product.png) |
+
+| Sign in | Search |
+|---|---|
+| ![Sign in](docs/screenshots/01-login.png) | ![Search](docs/screenshots/07-search.png) |
+
+Screenshots taken from the Compose stack with the demo catalogue.
+
 ## Tech stack
 
 | Area | Technologies |

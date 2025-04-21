@@ -135,6 +135,22 @@ externo:
 mvn -B -pl shopstack-it -am test
 ```
 
+## Interfaz
+
+| Tienda | Carrito y pago |
+|---|---|
+| ![Tienda](docs/screenshots/02-storefront.png) | ![Carrito](docs/screenshots/03-cart.png) |
+
+| Productos del vendedor | Añadir producto |
+|---|---|
+| ![Productos del vendedor](docs/screenshots/05-seller-products.png) | ![Añadir producto](docs/screenshots/06-add-product.png) |
+
+| Acceso | Búsqueda |
+|---|---|
+| ![Acceso](docs/screenshots/01-login.png) | ![Búsqueda](docs/screenshots/07-search.png) |
+
+Capturas tomadas del stack de Compose con el catálogo de demostración.
+
 ## Tecnologías
 
 | Área | Tecnologías |
