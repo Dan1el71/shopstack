@@ -28,6 +28,7 @@ import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.annotation.Validated;
@@ -227,5 +228,22 @@ public class ApiExceptionHandler {
         errors.setStatus(HttpStatus.FORBIDDEN.value());
 
         return new ResponseEntity<>(errors, HttpStatus.FORBIDDEN);
+    }
+    /**
+     * Handles a request that reached a service without an authenticated user.
+     *
+     * @param e is the thrown exception.
+     * @return <code>ResponseEntity</code> with 401.
+     */
+    @ExceptionHandler(value = {AuthenticationCredentialsNotFoundException.class})
+    @ResponseStatus(value = HttpStatus.UNAUTHORIZED)
+    public ResponseEntity<CustomErrorResponse> authenticationRequiredHandler(
+            AuthenticationCredentialsNotFoundException e) {
+        CustomErrorResponse errors = new CustomErrorResponse();
+        errors.setTimestamp(LocalDateTime.now());
+        errors.setError(e.getMessage());
+        errors.setStatus(HttpStatus.UNAUTHORIZED.value());
+
+        return new ResponseEntity<>(errors, HttpStatus.UNAUTHORIZED);
     }
 }
