@@ -1,5 +1,7 @@
 package com.shopstack.services;
 
+import com.shopstack.security.CurrentUser;
+
 /*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  + MIT License
  +
@@ -40,7 +42,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
@@ -81,7 +82,7 @@ public class OrderServiceImpl implements OrderService {
     public Long placeOrder(OrderDTO orderDTO) {
         Order order = RequestBodyToEntityConverter.convertToOrder(orderDTO);
 
-        UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        UserDetails userDetails = CurrentUser.require();
         User user = userService.getByUsername(userDetails.getUsername());
         order.setUser(user);
 
@@ -99,7 +100,7 @@ public class OrderServiceImpl implements OrderService {
      */
     @Override
     public PaginatedDTO<OrderWithPaymentDTO> getUserOrders(int page, int size) {
-        UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        UserDetails userDetails = CurrentUser.require();
         User user = userService.getByUsername(userDetails.getUsername());
 
         Pageable pageable = PageRequest.of(page, size);
