@@ -1,4 +1,4 @@
-FROM maven:3.8.1-openjdk-17 AS build
+FROM maven:3.9-eclipse-temurin-21 AS build
 
 WORKDIR /shopstack-payment-service
 
@@ -10,7 +10,7 @@ COPY src /shopstack-payment-service/src
 
 RUN mvn package -DskipTests
 
-FROM eclipse-temurin:17-jre
+FROM eclipse-temurin:21-jre
 
 WORKDIR /shopstack-payment-service
 
