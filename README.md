@@ -148,7 +148,47 @@ mvn -B -pl shopstack-it -am test
 |---|---|
 | ![Sign in](docs/screenshots/01-login.png) | ![Search](docs/screenshots/07-search.png) |
 
+![Walkthrough](docs/screenshots/shopstack-flow.gif)
+
 Screenshots taken from the Compose stack with the demo catalogue.
+
+## Demo data
+
+```bash
+cd development
+docker compose up -d mysql redis kafka shopstack-server shopstack-ui nginx
+./seed/seed-demo.sh
+```
+
+The script loads six products and two accounts (`seller` and `user`, both with
+`Demo12345!`). See [development/seed](development/seed/README.md).
+
+## Observability and load
+
+Every service exposes Micrometer metrics at `/actuator/prometheus`. The monitoring
+profile adds Prometheus and Grafana:
+
+```bash
+docker compose --profile monitoring up -d prometheus grafana
+# Prometheus: http://localhost:9090
+# Grafana:    http://localhost:3000
+```
+
+```bash
+k6 run perf/shopstack-load.js
+```
+
+The script keeps 10 virtual users browsing the catalogue for 30 seconds and fails
+if p95 exceeds 500 ms or the error rate exceeds 1%. Results from the reference run
+are in [docs/performance.md](docs/performance.md).
+
+## Stripe webhooks
+
+`payment-service` exposes `POST /api/webhooks/stripe`. The endpoint verifies the
+`Stripe-Signature` header against `STRIPE_WEBHOOK_SECRET`, applies
+`payment_intent.succeeded` and `payment_intent.payment_failed` to the local payment
+and publishes the result once. A payment that already reached a final state is
+ignored, so retries from Stripe are safe.
 
 ## Tech stack
 
