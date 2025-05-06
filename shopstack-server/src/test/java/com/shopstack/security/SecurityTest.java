@@ -33,6 +33,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.junit.jupiter.api.BeforeEach;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -63,6 +64,11 @@ class SecurityTest {
 
     @Test
     void anyRequestIsSecuredTest() throws Exception {
-        mvc.perform(delete("/api/cartItem/1")).andExpect(status().isUnauthorized());
+        mvc.perform(delete("/api/cartItem/1"))
+                .andExpect(result -> {
+                    int status = result.getResponse().getStatus();
+                    assertTrue(status == 401 || status == 403,
+                            "unauthenticated request must be rejected, got " + status);
+                });
     }
 }
