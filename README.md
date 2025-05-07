@@ -219,8 +219,8 @@ development/                   Docker Compose, Nginx and MySQL bootstrap
 
 ## Known limitations
 
-- The UI still carries a high advisory in the Vite dev-server line and two moderate ones in
-  `react-router`; both fixes require major upgrades (Vite 7 and React Router 7).
+- `npm audit` reports two moderate advisories in `react-router`; the proposed fix is React Router 7,
+  a major upgrade that needs a migration. There are no high or critical advisories.
 - Email uses SMTP credentials in plain environment variables.
 - There is no product search index; search runs against MySQL.
 

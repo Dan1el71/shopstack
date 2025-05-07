@@ -20,6 +20,10 @@ jobs:
           cache: maven
       - name: Test
         run: mvn -B test -Dit.skip=true
+      - name: Stripe test-mode payments
+        env:
+          STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
+        run: mvn -B -pl shopstack-payment-service -Dtest=StripePaymentServiceIT test
 
   integration:
     name: Integration tests

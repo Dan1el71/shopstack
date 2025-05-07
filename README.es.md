@@ -221,8 +221,8 @@ development/                   Docker Compose, Nginx y arranque de MySQL
 
 ## Limitaciones conocidas
 
-- El UI mantiene un aviso alto en la línea de servidor de desarrollo de Vite y dos moderados en
-  `react-router`; ambos requieren saltos mayores (Vite 7 y React Router 7).
+- `npm audit` reporta dos avisos moderados en `react-router`; la corrección propuesta es React Router 7,
+  un salto mayor que requiere migración. No hay avisos altos ni críticos.
 - El email usa credenciales SMTP en variables de entorno planas.
 - No hay índice de búsqueda de productos; la búsqueda va contra MySQL.
 
