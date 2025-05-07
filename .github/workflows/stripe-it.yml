@@ -1,0 +1,20 @@
+name: Stripe integration
+
+on:
+  workflow_dispatch:
+
+jobs:
+  stripe:
+    name: Test-mode payments
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+      - name: Charge and decline test cards
+        env:
+          STRIPE_API_KEY: ${{ secrets.STRIPE_API_KEY }}
+        run: mvn -B -pl shopstack-payment-service -Dtest=StripePaymentServiceIT test
